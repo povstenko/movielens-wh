@@ -1,0 +1,988 @@
+{
+	"$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"factoryName": {
+			"type": "string",
+			"metadata": "Data Factory name",
+			"defaultValue": "povsmovies"
+		},
+		"inputBlob_connectionString": {
+			"type": "secureString",
+			"metadata": "Secure string for 'connectionString' of 'inputBlob'"
+		},
+		"movies_db_connectionString": {
+			"type": "secureString",
+			"metadata": "Secure string for 'connectionString' of 'movies_db'"
+		}
+	},
+	"variables": {
+		"factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
+	},
+	"resources": [
+		{
+			"name": "[concat(parameters('factoryName'), '/csv to datalake')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "movies to lake",
+						"type": "Copy",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "DelimitedTextSource",
+								"storeSettings": {
+									"type": "AzureBlobStorageReadSettings",
+									"recursive": true,
+									"enablePartitionDiscovery": false
+								},
+								"formatSettings": {
+									"type": "DelimitedTextReadSettings"
+								}
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"preCopyScript": "TRUNCATE TABLE datalake.movies",
+								"disableMetricsCollection": false
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"mappings": [
+									{
+										"source": {
+											"name": "movieId",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "movieId",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "title",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "title",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "genres",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "genres",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									}
+								],
+								"typeConversion": true,
+								"typeConversionSettings": {
+									"allowDataTruncation": true,
+									"treatBooleanAsNumber": false
+								}
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "moviesCSV",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "moviesDataLake",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					},
+					{
+						"name": "ratings to lake",
+						"type": "Copy",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "DelimitedTextSource",
+								"storeSettings": {
+									"type": "AzureBlobStorageReadSettings",
+									"recursive": true,
+									"enablePartitionDiscovery": false
+								},
+								"formatSettings": {
+									"type": "DelimitedTextReadSettings"
+								}
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"preCopyScript": "TRUNCATE TABLE datalake.ratings",
+								"disableMetricsCollection": false
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"mappings": [
+									{
+										"source": {
+											"name": "userId",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "userId",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "movieId",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "movieId",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "rating",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "rating",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									}
+								],
+								"typeConversion": true,
+								"typeConversionSettings": {
+									"allowDataTruncation": true,
+									"treatBooleanAsNumber": false
+								}
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "ratingsCSV",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "ratingsDataLake",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					}
+				],
+				"annotations": [],
+				"lastPublishTime": "2021-08-16T07:06:59Z"
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/moviesCSV')]",
+				"[concat(variables('factoryId'), '/datasets/moviesDataLake')]",
+				"[concat(variables('factoryId'), '/datasets/ratingsCSV')]",
+				"[concat(variables('factoryId'), '/datasets/ratingsDataLake')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/main')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Load CSV to DataLake",
+						"type": "ExecutePipeline",
+						"dependsOn": [],
+						"userProperties": [],
+						"typeProperties": {
+							"pipeline": {
+								"referenceName": "csv to datalake",
+								"type": "PipelineReference"
+							},
+							"waitOnCompletion": true,
+							"parameters": {}
+						}
+					},
+					{
+						"name": "Transform to Stage",
+						"type": "ExecuteDataFlow",
+						"dependsOn": [
+							{
+								"activity": "Load CSV to DataLake",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "1.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"dataflow": {
+								"referenceName": "dataflowStg",
+								"type": "DataFlowReference",
+								"parameters": {},
+								"datasetParameters": {
+									"movies": {},
+									"ratings": {},
+									"sinkRatings": {},
+									"sinkMovies": {}
+								}
+							},
+							"staging": {},
+							"compute": {
+								"coreCount": 8,
+								"computeType": "General"
+							},
+							"traceLevel": "Fine"
+						}
+					},
+					{
+						"name": "Transform to DataMart",
+						"type": "ExecuteDataFlow",
+						"dependsOn": [
+							{
+								"activity": "Transform to Stage",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "1.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"dataflow": {
+								"referenceName": "dataflowDM",
+								"type": "DataFlowReference",
+								"parameters": {},
+								"datasetParameters": {
+									"moviesStg": {},
+									"ratingsStg": {},
+									"loadToDataMart": {},
+									"DimGenre": {},
+									"DimMovies": {}
+								}
+							},
+							"staging": {},
+							"compute": {
+								"coreCount": 8,
+								"computeType": "General"
+							},
+							"traceLevel": "Fine"
+						}
+					}
+				],
+				"annotations": [],
+				"lastPublishTime": "2021-08-16T08:16:27Z"
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/pipelines/csv to datalake')]",
+				"[concat(variables('factoryId'), '/dataflows/dataflowStg')]",
+				"[concat(variables('factoryId'), '/dataflows/dataflowDM')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/transform to stage')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Data flow Stage",
+						"type": "ExecuteDataFlow",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "1.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"dataflow": {
+								"referenceName": "dataflowStg",
+								"type": "DataFlowReference",
+								"parameters": {},
+								"datasetParameters": {
+									"movies": {},
+									"ratings": {},
+									"sinkRatings": {},
+									"sinkMovies": {}
+								}
+							},
+							"staging": {},
+							"compute": {
+								"coreCount": 8,
+								"computeType": "General"
+							},
+							"traceLevel": "Fine"
+						}
+					}
+				],
+				"annotations": [],
+				"lastPublishTime": "2021-08-16T07:06:59Z"
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/dataflows/dataflowStg')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/warehouse')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Data flow1",
+						"type": "ExecuteDataFlow",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "1.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"dataflow": {
+								"referenceName": "dataflowDM",
+								"type": "DataFlowReference",
+								"parameters": {},
+								"datasetParameters": {
+									"moviesStg": {},
+									"ratingsStg": {},
+									"loadToDataMart": {},
+									"DimGenre": {},
+									"DimMovies": {}
+								}
+							},
+							"staging": {},
+							"compute": {
+								"coreCount": 8,
+								"computeType": "General"
+							},
+							"traceLevel": "Fine"
+						}
+					}
+				],
+				"annotations": [],
+				"lastPublishTime": "2021-08-16T15:06:28Z"
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/dataflows/dataflowDM')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Dim_Date')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "movies_db",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "dateId",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "year",
+						"type": "smallint",
+						"precision": 5
+					},
+					{
+						"name": "isLeapYear",
+						"type": "tinyint",
+						"precision": 3
+					},
+					{
+						"name": "century",
+						"type": "smallint",
+						"precision": 5
+					}
+				],
+				"typeProperties": {
+					"schema": "warehouse",
+					"table": "Dim_Date"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/movies_db')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Dim_Genre')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "movies_db",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "genreId",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "genre",
+						"type": "nvarchar"
+					}
+				],
+				"typeProperties": {
+					"schema": "warehouse",
+					"table": "Dim_Genre"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/movies_db')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/moviesCSV')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "inputBlob",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobStorageLocation",
+						"fileName": "movies-small.csv",
+						"container": "input"
+					},
+					"columnDelimiter": ",",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": [
+					{
+						"name": "movieId",
+						"type": "String"
+					},
+					{
+						"name": "title",
+						"type": "String"
+					},
+					{
+						"name": "genres",
+						"type": "String"
+					}
+				]
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/inputBlob')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/moviesDataLake')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "movies_db",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "movieId",
+						"type": "nvarchar"
+					},
+					{
+						"name": "title",
+						"type": "nvarchar"
+					},
+					{
+						"name": "genres",
+						"type": "nvarchar"
+					}
+				],
+				"typeProperties": {
+					"schema": "datalake",
+					"table": "movies"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/movies_db')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/moviesDataMart')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "movies_db",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "movieId",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "title",
+						"type": "nvarchar"
+					},
+					{
+						"name": "genres",
+						"type": "nvarchar"
+					},
+					{
+						"name": "year",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "rating",
+						"type": "float",
+						"precision": 15
+					}
+				],
+				"typeProperties": {
+					"schema": "datamart",
+					"table": "movies"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/movies_db')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/moviesStage')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "movies_db",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "movieId",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "title",
+						"type": "nvarchar"
+					},
+					{
+						"name": "genres",
+						"type": "nvarchar"
+					},
+					{
+						"name": "year",
+						"type": "int",
+						"precision": 10
+					}
+				],
+				"typeProperties": {
+					"schema": "stage",
+					"table": "movies"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/movies_db')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ratingsCSV')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "inputBlob",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobStorageLocation",
+						"fileName": "ratings-small.csv",
+						"container": "input"
+					},
+					"columnDelimiter": ",",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": [
+					{
+						"name": "userId",
+						"type": "String"
+					},
+					{
+						"name": "movieId",
+						"type": "String"
+					},
+					{
+						"name": "rating",
+						"type": "String"
+					},
+					{
+						"name": "timestamp",
+						"type": "String"
+					}
+				]
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/inputBlob')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ratingsDataLake')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "movies_db",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "userId",
+						"type": "nvarchar"
+					},
+					{
+						"name": "movieId",
+						"type": "nvarchar"
+					},
+					{
+						"name": "rating",
+						"type": "nvarchar"
+					}
+				],
+				"typeProperties": {
+					"schema": "datalake",
+					"table": "ratings"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/movies_db')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ratingsStage')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "movies_db",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "userId",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "movieId",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "rating",
+						"type": "float",
+						"precision": 15
+					}
+				],
+				"typeProperties": {
+					"schema": "stage",
+					"table": "ratings"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/movies_db')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/inputBlob')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "AzureBlobStorage",
+				"typeProperties": {
+					"connectionString": "[parameters('inputBlob_connectionString')]"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/movies_db')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "AzureSqlDatabase",
+				"typeProperties": {
+					"connectionString": "[parameters('movies_db_connectionString')]"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/dataflowDM')]",
+			"type": "Microsoft.DataFactory/factories/dataflows",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"type": "MappingDataFlow",
+				"typeProperties": {
+					"sources": [
+						{
+							"dataset": {
+								"referenceName": "moviesStage",
+								"type": "DatasetReference"
+							},
+							"name": "moviesStg"
+						},
+						{
+							"dataset": {
+								"referenceName": "ratingsStage",
+								"type": "DatasetReference"
+							},
+							"name": "ratingsStg"
+						}
+					],
+					"sinks": [
+						{
+							"dataset": {
+								"referenceName": "moviesDataMart",
+								"type": "DatasetReference"
+							},
+							"name": "loadToDataMart"
+						},
+						{
+							"dataset": {
+								"referenceName": "Dim_Genre",
+								"type": "DatasetReference"
+							},
+							"name": "DimGenre"
+						},
+						{
+							"dataset": {
+								"referenceName": "Dim_Movie",
+								"type": "DatasetReference"
+							},
+							"name": "DimMovies"
+						}
+					],
+					"transformations": [
+						{
+							"name": "AggregateRatings"
+						},
+						{
+							"name": "JoinMoviesRatings"
+						},
+						{
+							"name": "Select"
+						},
+						{
+							"name": "SplitGenres"
+						},
+						{
+							"name": "FlattenGenres"
+						},
+						{
+							"name": "DistinctGenres"
+						},
+						{
+							"name": "SortGenresByCount"
+						},
+						{
+							"name": "AddSurrogateKey"
+						},
+						{
+							"name": "SelectGenres"
+						}
+					],
+					"script": "source(output(\n\t\tmovieId as integer,\n\t\ttitle as string,\n\t\tgenres as string,\n\t\tyear as integer\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tisolationLevel: 'READ_UNCOMMITTED',\n\tformat: 'table') ~> moviesStg\nsource(output(\n\t\tuserId as integer,\n\t\tmovieId as integer,\n\t\trating as double\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tisolationLevel: 'READ_UNCOMMITTED',\n\tformat: 'table') ~> ratingsStg\nratingsStg aggregate(groupBy(movieId),\n\trating = avg(rating)) ~> AggregateRatings\nmoviesStg, AggregateRatings join(moviesStg@movieId == AggregateRatings@movieId,\n\tjoinType:'inner',\n\tbroadcast: 'auto')~> JoinMoviesRatings\nJoinMoviesRatings select(mapColumn(\n\t\tmovieId = moviesStg@movieId,\n\t\ttitle,\n\t\tgenres,\n\t\tyear,\n\t\trating\n\t),\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true) ~> Select\nSelect derive(splittedGenre = split(toString(genres), '|')) ~> SplitGenres\nSplitGenres foldDown(unroll(splittedGenre, splittedGenre),\n\tmapColumn(\n\t\tmovieId,\n\t\ttitle,\n\t\tgenres,\n\t\tyear,\n\t\trating,\n\t\tgenre = splittedGenre\n\t),\n\tskipDuplicateMapInputs: false,\n\tskipDuplicateMapOutputs: false) ~> FlattenGenres\nFlattenGenres aggregate(groupBy(genre),\n\tcount = countDistinct(movieId)) ~> DistinctGenres\nDistinctGenres sort(desc(count, true)) ~> SortGenresByCount\nSortGenresByCount keyGenerate(output(genreId as long),\n\tstartAt: 1L) ~> AddSurrogateKey\nAddSurrogateKey select(mapColumn(\n\t\tgenreId,\n\t\tgenre\n\t),\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true) ~> SelectGenres\nSelect sink(allowSchemaDrift: true,\n\tvalidateSchema: false,\n\tinput(\n\t\tmovieId as integer,\n\t\ttitle as string,\n\t\tgenres as string,\n\t\tyear as integer,\n\t\trating as double\n\t),\n\tdeletable:false,\n\tinsertable:true,\n\tupdateable:false,\n\tupsertable:false,\n\ttruncate:true,\n\tformat: 'table',\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true,\n\terrorHandlingOption: 'stopOnFirstError') ~> loadToDataMart\nSelectGenres sink(allowSchemaDrift: true,\n\tvalidateSchema: false,\n\tinput(\n\t\tgenreId as integer,\n\t\tgenre as string\n\t),\n\tdeletable:false,\n\tinsertable:true,\n\tupdateable:false,\n\tupsertable:false,\n\ttruncate:true,\n\tformat: 'table',\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true,\n\terrorHandlingOption: 'stopOnFirstError') ~> DimGenre\nSelect sink(allowSchemaDrift: true,\n\tvalidateSchema: false,\n\tinput(\n\t\tmovieId as integer,\n\t\ttitle as string\n\t),\n\tdeletable:false,\n\tinsertable:true,\n\tupdateable:false,\n\tupsertable:false,\n\ttruncate:true,\n\tformat: 'table',\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true,\n\terrorHandlingOption: 'stopOnFirstError',\n\tmapColumn(\n\t\tmovieId,\n\t\ttitle\n\t)) ~> DimMovies"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/moviesStage')]",
+				"[concat(variables('factoryId'), '/datasets/ratingsStage')]",
+				"[concat(variables('factoryId'), '/datasets/moviesDataMart')]",
+				"[concat(variables('factoryId'), '/datasets/Dim_Genre')]",
+				"[concat(variables('factoryId'), '/datasets/Dim_Movie')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/dataflowStg')]",
+			"type": "Microsoft.DataFactory/factories/dataflows",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"type": "MappingDataFlow",
+				"typeProperties": {
+					"sources": [
+						{
+							"dataset": {
+								"referenceName": "moviesDataLake",
+								"type": "DatasetReference"
+							},
+							"name": "movies"
+						},
+						{
+							"dataset": {
+								"referenceName": "ratingsDataLake",
+								"type": "DatasetReference"
+							},
+							"name": "ratings"
+						}
+					],
+					"sinks": [
+						{
+							"dataset": {
+								"referenceName": "ratingsStage",
+								"type": "DatasetReference"
+							},
+							"name": "sinkRatings",
+							"rejectedDataLinkedService": {
+								"referenceName": "inputBlob",
+								"type": "LinkedServiceReference"
+							}
+						},
+						{
+							"dataset": {
+								"referenceName": "moviesStage",
+								"type": "DatasetReference"
+							},
+							"name": "sinkMovies",
+							"rejectedDataLinkedService": {
+								"referenceName": "inputBlob",
+								"type": "LinkedServiceReference"
+							}
+						}
+					],
+					"transformations": [
+						{
+							"name": "DataTypeConversion1"
+						},
+						{
+							"name": "DataTypeConversion"
+						},
+						{
+							"name": "YearExctraction"
+						}
+					],
+					"script": "source(output(\n\t\tmovieId as string,\n\t\ttitle as string,\n\t\tgenres as string\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tisolationLevel: 'READ_UNCOMMITTED',\n\tformat: 'table') ~> movies\nsource(output(\n\t\tuserId as string,\n\t\tmovieId as string,\n\t\trating as string\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tisolationLevel: 'READ_UNCOMMITTED',\n\tformat: 'table') ~> ratings\nmovies derive(movieId = toInteger(movieId),\n\t\ttitle = toString(title),\n\t\tgenres = toString(genres)) ~> DataTypeConversion1\nratings derive(movieId = toInteger(movieId),\n\t\trating = toFloat(rating),\n\t\tuserId = toInteger(userId)) ~> DataTypeConversion\nDataTypeConversion1 derive(year = toInteger(trim(right(title, 6), '()')),\n\t\ttitle = toString(left(title, length(title)-7))) ~> YearExctraction\nDataTypeConversion sink(allowSchemaDrift: true,\n\tvalidateSchema: false,\n\tinput(\n\t\tuserId as integer,\n\t\tmovieId as integer,\n\t\trating as double\n\t),\n\tdeletable:false,\n\tinsertable:true,\n\tupdateable:false,\n\tupsertable:false,\n\ttruncate:true,\n\tformat: 'table',\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true,\n\terrorHandlingOption: 'allErrors',\n\toutputRejectedData: true,\n\trejectedData_container: 'error',\n\ttransactionCommit: 'single',\n\treportSuccessOnError: true,\n\tmapColumn(\n\t\tuserId,\n\t\tmovieId,\n\t\trating\n\t)) ~> sinkRatings\nYearExctraction sink(allowSchemaDrift: true,\n\tvalidateSchema: false,\n\tinput(\n\t\tmovieId as integer,\n\t\ttitle as string,\n\t\tgenres as string,\n\t\tyear as integer\n\t),\n\tdeletable:false,\n\tinsertable:true,\n\tupdateable:false,\n\tupsertable:false,\n\ttruncate:true,\n\tformat: 'table',\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true,\n\terrorHandlingOption: 'allErrors',\n\toutputRejectedData: true,\n\trejectedData_container: 'error',\n\ttransactionCommit: 'single',\n\treportSuccessOnError: true,\n\tmapColumn(\n\t\tmovieId,\n\t\ttitle,\n\t\tgenres,\n\t\tyear\n\t)) ~> sinkMovies"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/moviesDataLake')]",
+				"[concat(variables('factoryId'), '/datasets/ratingsDataLake')]",
+				"[concat(variables('factoryId'), '/datasets/ratingsStage')]",
+				"[concat(variables('factoryId'), '/linkedServices/inputBlob')]",
+				"[concat(variables('factoryId'), '/datasets/moviesStage')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Dim_Movie')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "movies_db",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "movieId",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "title",
+						"type": "nvarchar"
+					}
+				],
+				"typeProperties": {
+					"schema": "warehouse",
+					"table": "Dim_Movie"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/movies_db')]"
+			]
+		}
+	]
+}

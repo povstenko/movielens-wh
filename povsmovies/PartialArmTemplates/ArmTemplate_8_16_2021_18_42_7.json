@@ -1,0 +1,127 @@
+{
+	"$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"factoryName": {
+			"type": "string",
+			"metadata": "Data Factory name",
+			"defaultValue": "povsmovies"
+		}
+	},
+	"variables": {
+		"factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
+	},
+	"resources": [
+		{
+			"name": "[concat(parameters('factoryName'), '/dataflowDM')]",
+			"type": "Microsoft.DataFactory/factories/dataflows",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"type": "MappingDataFlow",
+				"typeProperties": {
+					"sources": [
+						{
+							"dataset": {
+								"referenceName": "moviesStage",
+								"type": "DatasetReference"
+							},
+							"name": "moviesStg"
+						},
+						{
+							"dataset": {
+								"referenceName": "ratingsStage",
+								"type": "DatasetReference"
+							},
+							"name": "ratingsStg"
+						}
+					],
+					"sinks": [
+						{
+							"dataset": {
+								"referenceName": "moviesDataMart",
+								"type": "DatasetReference"
+							},
+							"name": "loadToDataMart"
+						},
+						{
+							"dataset": {
+								"referenceName": "Dim_Genre",
+								"type": "DatasetReference"
+							},
+							"name": "DimGenre"
+						},
+						{
+							"dataset": {
+								"referenceName": "Dim_Movie",
+								"type": "DatasetReference"
+							},
+							"name": "DimMovies"
+						}
+					],
+					"transformations": [
+						{
+							"name": "AggregateRatings"
+						},
+						{
+							"name": "JoinMoviesRatings"
+						},
+						{
+							"name": "Select"
+						},
+						{
+							"name": "SplitGenres"
+						},
+						{
+							"name": "FlattenGenres"
+						},
+						{
+							"name": "DistinctGenres"
+						},
+						{
+							"name": "SortGenresByCount"
+						},
+						{
+							"name": "AddSurrogateKey"
+						},
+						{
+							"name": "SelectGenres"
+						}
+					],
+					"script": "source(output(\n\t\tmovieId as integer,\n\t\ttitle as string,\n\t\tgenres as string,\n\t\tyear as integer\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tisolationLevel: 'READ_UNCOMMITTED',\n\tformat: 'table') ~> moviesStg\nsource(output(\n\t\tuserId as integer,\n\t\tmovieId as integer,\n\t\trating as double\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tisolationLevel: 'READ_UNCOMMITTED',\n\tformat: 'table') ~> ratingsStg\nratingsStg aggregate(groupBy(movieId),\n\trating = avg(rating)) ~> AggregateRatings\nmoviesStg, AggregateRatings join(moviesStg@movieId == AggregateRatings@movieId,\n\tjoinType:'inner',\n\tbroadcast: 'auto')~> JoinMoviesRatings\nJoinMoviesRatings select(mapColumn(\n\t\tmovieId = moviesStg@movieId,\n\t\ttitle,\n\t\tgenres,\n\t\tyear,\n\t\trating\n\t),\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true) ~> Select\nSelect derive(splittedGenre = split(toString(genres), '|')) ~> SplitGenres\nSplitGenres foldDown(unroll(splittedGenre, splittedGenre),\n\tmapColumn(\n\t\tmovieId,\n\t\ttitle,\n\t\tgenres,\n\t\tyear,\n\t\trating,\n\t\tgenre = splittedGenre\n\t),\n\tskipDuplicateMapInputs: false,\n\tskipDuplicateMapOutputs: false) ~> FlattenGenres\nFlattenGenres aggregate(groupBy(genre),\n\tcount = countDistinct(movieId)) ~> DistinctGenres\nDistinctGenres sort(desc(count, true)) ~> SortGenresByCount\nSortGenresByCount keyGenerate(output(genreId as long),\n\tstartAt: 1L) ~> AddSurrogateKey\nAddSurrogateKey select(mapColumn(\n\t\tgenreId,\n\t\tgenre\n\t),\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true) ~> SelectGenres\nSelect sink(allowSchemaDrift: true,\n\tvalidateSchema: false,\n\tinput(\n\t\tmovieId as integer,\n\t\ttitle as string,\n\t\tgenres as string,\n\t\tyear as integer,\n\t\trating as double\n\t),\n\tdeletable:false,\n\tinsertable:true,\n\tupdateable:false,\n\tupsertable:false,\n\ttruncate:true,\n\tformat: 'table',\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true,\n\terrorHandlingOption: 'stopOnFirstError') ~> loadToDataMart\nSelectGenres sink(allowSchemaDrift: true,\n\tvalidateSchema: false,\n\tinput(\n\t\tgenreId as integer,\n\t\tgenre as string\n\t),\n\tdeletable:false,\n\tinsertable:true,\n\tupdateable:false,\n\tupsertable:false,\n\ttruncate:true,\n\tformat: 'table',\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true,\n\terrorHandlingOption: 'stopOnFirstError') ~> DimGenre\nSelect sink(allowSchemaDrift: true,\n\tvalidateSchema: false,\n\tinput(\n\t\tmovieId as integer,\n\t\ttitle as string\n\t),\n\tdeletable:false,\n\tinsertable:true,\n\tupdateable:false,\n\tupsertable:false,\n\ttruncate:true,\n\tformat: 'table',\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true,\n\terrorHandlingOption: 'stopOnFirstError',\n\tmapColumn(\n\t\tmovieId,\n\t\ttitle\n\t)) ~> DimMovies"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/Dim_Movie')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Dim_Movie')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "movies_db",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "movieId",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "title",
+						"type": "nvarchar"
+					}
+				],
+				"typeProperties": {
+					"schema": "warehouse",
+					"table": "Dim_Movie"
+				}
+			},
+			"dependsOn": []
+		}
+	]
+}
