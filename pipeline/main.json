@@ -47,7 +47,7 @@
 				}
 			},
 			{
-				"name": "Execute Pipeline1",
+				"name": "ETL Warehouse",
 				"type": "ExecutePipeline",
 				"dependsOn": [
 					{
