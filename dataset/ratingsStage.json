@@ -1,0 +1,33 @@
+{
+	"name": "ratingsStage",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "movies_db",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": [
+			{
+				"name": "userId",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "movieId",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "rating",
+				"type": "float",
+				"precision": 15
+			}
+		],
+		"typeProperties": {
+			"schema": "stage",
+			"table": "ratings"
+		}
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

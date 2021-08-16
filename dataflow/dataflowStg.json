@@ -1,0 +1,60 @@
+{
+	"name": "dataflowStg",
+	"properties": {
+		"type": "MappingDataFlow",
+		"typeProperties": {
+			"sources": [
+				{
+					"dataset": {
+						"referenceName": "moviesDataLake",
+						"type": "DatasetReference"
+					},
+					"name": "movies"
+				},
+				{
+					"dataset": {
+						"referenceName": "ratingsDataLake",
+						"type": "DatasetReference"
+					},
+					"name": "ratings"
+				}
+			],
+			"sinks": [
+				{
+					"dataset": {
+						"referenceName": "ratingsStage",
+						"type": "DatasetReference"
+					},
+					"name": "sinkRatings",
+					"rejectedDataLinkedService": {
+						"referenceName": "inputBlob",
+						"type": "LinkedServiceReference"
+					}
+				},
+				{
+					"dataset": {
+						"referenceName": "moviesStage",
+						"type": "DatasetReference"
+					},
+					"name": "sinkMovies",
+					"rejectedDataLinkedService": {
+						"referenceName": "inputBlob",
+						"type": "LinkedServiceReference"
+					}
+				}
+			],
+			"transformations": [
+				{
+					"name": "DataTypeConversion1"
+				},
+				{
+					"name": "DataTypeConversion"
+				},
+				{
+					"name": "YearExctraction"
+				}
+			],
+			"script": "source(output(\n\t\tmovieId as string,\n\t\ttitle as string,\n\t\tgenres as string\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tisolationLevel: 'READ_UNCOMMITTED',\n\tformat: 'table') ~> movies\nsource(output(\n\t\tuserId as string,\n\t\tmovieId as string,\n\t\trating as string\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tisolationLevel: 'READ_UNCOMMITTED',\n\tformat: 'table') ~> ratings\nmovies derive(movieId = toInteger(movieId),\n\t\ttitle = toString(title),\n\t\tgenres = toString(genres)) ~> DataTypeConversion1\nratings derive(movieId = toInteger(movieId),\n\t\trating = toFloat(rating),\n\t\tuserId = toInteger(userId)) ~> DataTypeConversion\nDataTypeConversion1 derive(year = toInteger(trim(right(title, 6), '()')),\n\t\ttitle = toString(left(title, length(title)-7))) ~> YearExctraction\nDataTypeConversion sink(allowSchemaDrift: true,\n\tvalidateSchema: false,\n\tinput(\n\t\tuserId as integer,\n\t\tmovieId as integer,\n\t\trating as double\n\t),\n\tdeletable:false,\n\tinsertable:true,\n\tupdateable:false,\n\tupsertable:false,\n\ttruncate:true,\n\tformat: 'table',\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true,\n\terrorHandlingOption: 'allErrors',\n\toutputRejectedData: true,\n\trejectedData_container: 'error',\n\ttransactionCommit: 'single',\n\treportSuccessOnError: true,\n\tmapColumn(\n\t\tuserId,\n\t\tmovieId,\n\t\trating\n\t)) ~> sinkRatings\nYearExctraction sink(allowSchemaDrift: true,\n\tvalidateSchema: false,\n\tinput(\n\t\tmovieId as integer,\n\t\ttitle as string,\n\t\tgenres as string,\n\t\tyear as integer\n\t),\n\tdeletable:false,\n\tinsertable:true,\n\tupdateable:false,\n\tupsertable:false,\n\ttruncate:true,\n\tformat: 'table',\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true,\n\terrorHandlingOption: 'allErrors',\n\toutputRejectedData: true,\n\trejectedData_container: 'error',\n\ttransactionCommit: 'single',\n\treportSuccessOnError: true,\n\tmapColumn(\n\t\tmovieId,\n\t\ttitle,\n\t\tgenres,\n\t\tyear\n\t)) ~> sinkMovies"
+		}
+	}
+}

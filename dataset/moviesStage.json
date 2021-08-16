@@ -1,0 +1,36 @@
+{
+	"name": "moviesStage",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "movies_db",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": [
+			{
+				"name": "movieId",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "title",
+				"type": "nvarchar"
+			},
+			{
+				"name": "genres",
+				"type": "nvarchar"
+			},
+			{
+				"name": "year",
+				"type": "int",
+				"precision": 10
+			}
+		],
+		"typeProperties": {
+			"schema": "stage",
+			"table": "movies"
+		}
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

@@ -1,0 +1,30 @@
+{
+	"name": "moviesDataLake",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "movies_db",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": [
+			{
+				"name": "movieId",
+				"type": "nvarchar"
+			},
+			{
+				"name": "title",
+				"type": "nvarchar"
+			},
+			{
+				"name": "genres",
+				"type": "nvarchar"
+			}
+		],
+		"typeProperties": {
+			"schema": "datalake",
+			"table": "movies"
+		}
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

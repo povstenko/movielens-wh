@@ -1,0 +1,41 @@
+{
+	"name": "moviesDataMart",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "movies_db",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": [
+			{
+				"name": "movieId",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "title",
+				"type": "nvarchar"
+			},
+			{
+				"name": "genres",
+				"type": "nvarchar"
+			},
+			{
+				"name": "year",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "rating",
+				"type": "float",
+				"precision": 15
+			}
+		],
+		"typeProperties": {
+			"schema": "datamart",
+			"table": "movies"
+		}
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

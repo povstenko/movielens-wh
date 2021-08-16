@@ -1,0 +1,38 @@
+{
+	"name": "Dim_Date",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "movies_db",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": [
+			{
+				"name": "dateId",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "year",
+				"type": "smallint",
+				"precision": 5
+			},
+			{
+				"name": "isLeapYear",
+				"type": "tinyint",
+				"precision": 3
+			},
+			{
+				"name": "century",
+				"type": "smallint",
+				"precision": 5
+			}
+		],
+		"typeProperties": {
+			"schema": "warehouse",
+			"table": "Dim_Date"
+		}
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

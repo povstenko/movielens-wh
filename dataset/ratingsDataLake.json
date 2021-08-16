@@ -1,0 +1,30 @@
+{
+	"name": "ratingsDataLake",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "movies_db",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": [
+			{
+				"name": "userId",
+				"type": "nvarchar"
+			},
+			{
+				"name": "movieId",
+				"type": "nvarchar"
+			},
+			{
+				"name": "rating",
+				"type": "nvarchar"
+			}
+		],
+		"typeProperties": {
+			"schema": "datalake",
+			"table": "ratings"
+		}
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

@@ -1,0 +1,9 @@
+{
+	"name": "povsmovies",
+	"location": "westeurope",
+	"identity": {
+		"type": "SystemAssigned",
+		"principalId": "ec9085a7-6eaf-481d-ba6f-ebdf91ce9819",
+		"tenantId": "abfdd102-5863-4aa5-8ada-5246d45ce156"
+	}
+}
