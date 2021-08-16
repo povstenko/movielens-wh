@@ -55,6 +55,9 @@
 					"referenceName": "movies_db",
 					"type": "LinkedServiceReference"
 				},
+				"folder": {
+					"name": "warehouse"
+				},
 				"annotations": [],
 				"type": "AzureSqlTable",
 				"schema": [
@@ -96,6 +99,9 @@
 				"linkedServiceName": {
 					"referenceName": "movies_db",
 					"type": "LinkedServiceReference"
+				},
+				"folder": {
+					"name": "warehouse"
 				},
 				"annotations": [],
 				"type": "AzureSqlTable",
@@ -404,6 +410,9 @@
 					"referenceName": "movies_db",
 					"type": "LinkedServiceReference"
 				},
+				"folder": {
+					"name": "warehouse"
+				},
 				"annotations": [],
 				"type": "AzureSqlTable",
 				"schema": [
@@ -420,6 +429,86 @@
 				"typeProperties": {
 					"schema": "warehouse",
 					"table": "Dim_Movie"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/movies_db')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Bridge_MovieGenre')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "movies_db",
+					"type": "LinkedServiceReference"
+				},
+				"folder": {
+					"name": "warehouse"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "movieId",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "genreId",
+						"type": "int",
+						"precision": 10
+					}
+				],
+				"typeProperties": {
+					"schema": "warehouse",
+					"table": "Bridge_MovieGenre"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/movies_db')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Fact_Rating')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "movies_db",
+					"type": "LinkedServiceReference"
+				},
+				"folder": {
+					"name": "warehouse"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "ratingId",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "movieId",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "dateId",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "rating",
+						"type": "float",
+						"precision": 15
+					}
+				],
+				"typeProperties": {
+					"schema": "warehouse",
+					"table": "Fact_Rating"
 				}
 			},
 			"dependsOn": [
@@ -628,7 +717,7 @@
 			]
 		},
 		{
-			"name": "[concat(parameters('factoryName'), '/dataflowDM')]",
+			"name": "[concat(parameters('factoryName'), '/dataflowDimGenreDimMovie')]",
 			"type": "Microsoft.DataFactory/factories/dataflows",
 			"apiVersion": "2018-06-01",
 			"properties": {
@@ -783,112 +872,77 @@
 			]
 		},
 		{
-			"name": "[concat(parameters('factoryName'), '/main')]",
-			"type": "Microsoft.DataFactory/factories/pipelines",
+			"name": "[concat(parameters('factoryName'), '/dataflowBridgeAndFact')]",
+			"type": "Microsoft.DataFactory/factories/dataflows",
 			"apiVersion": "2018-06-01",
 			"properties": {
-				"activities": [
-					{
-						"name": "Load CSV to DataLake",
-						"type": "ExecutePipeline",
-						"dependsOn": [],
-						"userProperties": [],
-						"typeProperties": {
-							"pipeline": {
-								"referenceName": "csv to datalake",
-								"type": "PipelineReference"
+				"type": "MappingDataFlow",
+				"typeProperties": {
+					"sources": [
+						{
+							"dataset": {
+								"referenceName": "moviesDataMart",
+								"type": "DatasetReference"
 							},
-							"waitOnCompletion": true,
-							"parameters": {}
-						}
-					},
-					{
-						"name": "Transform to Stage",
-						"type": "ExecuteDataFlow",
-						"dependsOn": [
-							{
-								"activity": "Load CSV to DataLake",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "1.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
+							"name": "DMsource"
 						},
-						"userProperties": [],
-						"typeProperties": {
-							"dataflow": {
-								"referenceName": "dataflowStg",
-								"type": "DataFlowReference",
-								"parameters": {},
-								"datasetParameters": {
-									"movies": {},
-									"ratings": {},
-									"sinkRatings": {},
-									"sinkMovies": {}
-								}
+						{
+							"dataset": {
+								"referenceName": "Dim_Genre",
+								"type": "DatasetReference"
 							},
-							"staging": {},
-							"compute": {
-								"coreCount": 8,
-								"computeType": "General"
-							},
-							"traceLevel": "Fine"
-						}
-					},
-					{
-						"name": "Transform to DataMart",
-						"type": "ExecuteDataFlow",
-						"dependsOn": [
-							{
-								"activity": "Transform to Stage",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "1.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
+							"name": "GenreDimmension"
 						},
-						"userProperties": [],
-						"typeProperties": {
-							"dataflow": {
-								"referenceName": "dataflowDM",
-								"type": "DataFlowReference",
-								"parameters": {},
-								"datasetParameters": {
-									"moviesStg": {},
-									"ratingsStg": {},
-									"loadToDataMart": {},
-									"DimGenre": {},
-									"DimMovies": {}
-								}
+						{
+							"dataset": {
+								"referenceName": "Dim_Date",
+								"type": "DatasetReference"
 							},
-							"staging": {},
-							"compute": {
-								"coreCount": 8,
-								"computeType": "General"
-							},
-							"traceLevel": "Fine"
+							"name": "DateDimmension"
 						}
-					}
-				],
-				"annotations": [],
-				"lastPublishTime": "2021-08-16T08:16:27Z"
+					],
+					"sinks": [
+						{
+							"dataset": {
+								"referenceName": "Bridge_MovieGenre",
+								"type": "DatasetReference"
+							},
+							"name": "BridgeSink"
+						},
+						{
+							"dataset": {
+								"referenceName": "Fact_Rating",
+								"type": "DatasetReference"
+							},
+							"name": "FactSink"
+						}
+					],
+					"transformations": [
+						{
+							"name": "SplitGenres"
+						},
+						{
+							"name": "FlattenGenres"
+						},
+						{
+							"name": "JoinDimMovie"
+						},
+						{
+							"name": "SelectKeys"
+						},
+						{
+							"name": "JoinDimDate"
+						}
+					],
+					"script": "source(output(\n\t\tmovieId as integer,\n\t\ttitle as string,\n\t\tgenres as string,\n\t\tyear as integer,\n\t\trating as double\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tisolationLevel: 'READ_UNCOMMITTED',\n\tformat: 'table') ~> DMsource\nsource(output(\n\t\tgenreId as integer,\n\t\tgenre as string\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tisolationLevel: 'READ_UNCOMMITTED',\n\tformat: 'table') ~> GenreDimmension\nsource(output(\n\t\tdateId as integer,\n\t\tyear as integer,\n\t\tisLeapYear as integer,\n\t\tcentury as integer\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tisolationLevel: 'READ_UNCOMMITTED',\n\tformat: 'table') ~> DateDimmension\nDMsource derive(splittedGenres = split(toString(genres), '|')) ~> SplitGenres\nSplitGenres foldDown(unroll(splittedGenres, splittedGenres),\n\tmapColumn(\n\t\tmovieId,\n\t\ttitle,\n\t\tyear,\n\t\trating,\n\t\tgenre = splittedGenres\n\t),\n\tskipDuplicateMapInputs: false,\n\tskipDuplicateMapOutputs: false) ~> FlattenGenres\nFlattenGenres, GenreDimmension join(FlattenGenres@genre == GenreDimmension@genre,\n\tjoinType:'left',\n\tbroadcast: 'auto')~> JoinDimMovie\nJoinDimDate select(mapColumn(\n\t\tmovieId,\n\t\trating,\n\t\tgenreId,\n\t\tdateId\n\t),\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true) ~> SelectKeys\nJoinDimMovie, DateDimmension join(FlattenGenres@year == DateDimmension@year,\n\tjoinType:'left',\n\tbroadcast: 'auto')~> JoinDimDate\nSelectKeys sink(allowSchemaDrift: true,\n\tvalidateSchema: false,\n\tinput(\n\t\tmovieId as integer,\n\t\tgenreId as integer\n\t),\n\tdeletable:false,\n\tinsertable:true,\n\tupdateable:false,\n\tupsertable:false,\n\tformat: 'table',\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true,\n\terrorHandlingOption: 'stopOnFirstError',\n\tmapColumn(\n\t\tmovieId,\n\t\tgenreId\n\t)) ~> BridgeSink\nSelectKeys sink(allowSchemaDrift: true,\n\tvalidateSchema: false,\n\tinput(\n\t\tratingId as integer,\n\t\tmovieId as integer,\n\t\tdateId as integer,\n\t\trating as double\n\t),\n\tdeletable:false,\n\tinsertable:true,\n\tupdateable:false,\n\tupsertable:false,\n\ttruncate:true,\n\tformat: 'table',\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true,\n\terrorHandlingOption: 'stopOnFirstError',\n\tmapColumn(\n\t\tmovieId,\n\t\tdateId,\n\t\trating\n\t)) ~> FactSink"
+				}
 			},
 			"dependsOn": [
-				"[concat(variables('factoryId'), '/pipelines/csv to datalake')]",
-				"[concat(variables('factoryId'), '/dataflows/dataflowStg')]",
-				"[concat(variables('factoryId'), '/dataflows/dataflowDM')]"
+				"[concat(variables('factoryId'), '/datasets/moviesDataMart')]",
+				"[concat(variables('factoryId'), '/datasets/Dim_Genre')]",
+				"[concat(variables('factoryId'), '/datasets/Dim_Date')]",
+				"[concat(variables('factoryId'), '/datasets/Bridge_MovieGenre')]",
+				"[concat(variables('factoryId'), '/datasets/Fact_Rating')]"
 			]
 		},
 		{
@@ -944,7 +998,7 @@
 			"properties": {
 				"activities": [
 					{
-						"name": "Data flow1",
+						"name": "DimGenreDimMovie",
 						"type": "ExecuteDataFlow",
 						"dependsOn": [],
 						"policy": {
@@ -957,7 +1011,7 @@
 						"userProperties": [],
 						"typeProperties": {
 							"dataflow": {
-								"referenceName": "dataflowDM",
+								"referenceName": "dataflowDimGenreDimMovie",
 								"type": "DataFlowReference",
 								"parameters": {},
 								"datasetParameters": {
@@ -975,13 +1029,82 @@
 							},
 							"traceLevel": "Fine"
 						}
+					},
+					{
+						"name": "BridgeAndFact",
+						"type": "ExecuteDataFlow",
+						"dependsOn": [
+							{
+								"activity": "PopulateDimDate",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "1.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"dataflow": {
+								"referenceName": "dataflowBridgeAndFact",
+								"type": "DataFlowReference",
+								"parameters": {},
+								"datasetParameters": {
+									"DMsource": {},
+									"GenreDimmension": {},
+									"DateDimmension": {},
+									"BridgeSink": {},
+									"FactSink": {}
+								}
+							},
+							"staging": {},
+							"compute": {
+								"coreCount": 8,
+								"computeType": "General"
+							},
+							"traceLevel": "Fine"
+						}
+					},
+					{
+						"name": "PopulateDimDate",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [
+							{
+								"activity": "DimGenreDimMovie",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "[[dbo].[stg_PopDimDate]"
+						},
+						"linkedServiceName": {
+							"referenceName": "movies_db",
+							"type": "LinkedServiceReference"
+						}
 					}
 				],
 				"annotations": [],
 				"lastPublishTime": "2021-08-16T15:06:28Z"
 			},
 			"dependsOn": [
-				"[concat(variables('factoryId'), '/dataflows/dataflowDM')]"
+				"[concat(variables('factoryId'), '/dataflows/dataflowDimGenreDimMovie')]",
+				"[concat(variables('factoryId'), '/dataflows/dataflowBridgeAndFact')]",
+				"[concat(variables('factoryId'), '/linkedServices/movies_db')]"
 			]
 		}
 	]
