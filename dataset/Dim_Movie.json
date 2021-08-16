@@ -5,6 +5,9 @@
 			"referenceName": "movies_db",
 			"type": "LinkedServiceReference"
 		},
+		"folder": {
+			"name": "warehouse"
+		},
 		"annotations": [],
 		"type": "AzureSqlTable",
 		"schema": [

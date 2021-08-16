@@ -1,5 +1,5 @@
 {
-	"name": "Dim_Date",
+	"name": "Fact_Rating",
 	"properties": {
 		"linkedServiceName": {
 			"referenceName": "movies_db",
@@ -12,30 +12,29 @@
 		"type": "AzureSqlTable",
 		"schema": [
 			{
+				"name": "ratingId",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "movieId",
+				"type": "int",
+				"precision": 10
+			},
+			{
 				"name": "dateId",
 				"type": "int",
 				"precision": 10
 			},
 			{
-				"name": "year",
-				"type": "smallint",
-				"precision": 5
-			},
-			{
-				"name": "isLeapYear",
-				"type": "tinyint",
-				"precision": 3
-			},
-			{
-				"name": "century",
-				"type": "smallint",
-				"precision": 5
+				"name": "rating",
+				"type": "float",
+				"precision": 15
 			}
 		],
 		"typeProperties": {
 			"schema": "warehouse",
-			"table": "Dim_Date"
+			"table": "Fact_Rating"
 		}
-	},
-	"type": "Microsoft.DataFactory/factories/datasets"
+	}
 }

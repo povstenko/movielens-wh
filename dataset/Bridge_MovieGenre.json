@@ -1,5 +1,5 @@
 {
-	"name": "Dim_Genre",
+	"name": "Bridge_MovieGenre",
 	"properties": {
 		"linkedServiceName": {
 			"referenceName": "movies_db",
@@ -12,19 +12,19 @@
 		"type": "AzureSqlTable",
 		"schema": [
 			{
-				"name": "genreId",
+				"name": "movieId",
 				"type": "int",
 				"precision": 10
 			},
 			{
-				"name": "genre",
-				"type": "nvarchar"
+				"name": "genreId",
+				"type": "int",
+				"precision": 10
 			}
 		],
 		"typeProperties": {
 			"schema": "warehouse",
-			"table": "Dim_Genre"
+			"table": "Bridge_MovieGenre"
 		}
-	},
-	"type": "Microsoft.DataFactory/factories/datasets"
+	}
 }

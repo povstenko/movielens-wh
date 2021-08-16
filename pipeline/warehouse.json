@@ -27,11 +27,11 @@
 				}
 			},
 			{
-				"name": "BridgeMovieGenre",
+				"name": "BridgeAndFact",
 				"type": "ExecuteDataFlow",
 				"dependsOn": [
 					{
-						"activity": "DimGenreDimMovie",
+						"activity": "PopulateDimDate",
 						"dependencyConditions": [
 							"Succeeded"
 						]
@@ -47,7 +47,7 @@
 				"userProperties": [],
 				"typeProperties": {
 					"dataflow": {
-						"referenceName": "dataflowBridge",
+						"referenceName": "dataflowBridgeAndFact",
 						"type": "DataFlowReference"
 					},
 					"compute": {
@@ -55,6 +55,33 @@
 						"computeType": "General"
 					},
 					"traceLevel": "Fine"
+				}
+			},
+			{
+				"name": "PopulateDimDate",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [
+					{
+						"activity": "DimGenreDimMovie",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[dbo].[stg_PopDimDate]"
+				},
+				"linkedServiceName": {
+					"referenceName": "movies_db",
+					"type": "LinkedServiceReference"
 				}
 			}
 		],
