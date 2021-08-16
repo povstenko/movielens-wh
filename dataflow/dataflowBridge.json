@@ -1,0 +1,50 @@
+{
+	"name": "dataflowBridge",
+	"properties": {
+		"type": "MappingDataFlow",
+		"typeProperties": {
+			"sources": [
+				{
+					"dataset": {
+						"referenceName": "moviesDataMart",
+						"type": "DatasetReference"
+					},
+					"name": "DMsource"
+				},
+				{
+					"dataset": {
+						"referenceName": "Dim_Genre",
+						"type": "DatasetReference"
+					},
+					"name": "GenreDimmension"
+				},
+				{
+					"dataset": {
+						"referenceName": "Dim_Date",
+						"type": "DatasetReference"
+					},
+					"name": "DateDimmension"
+				}
+			],
+			"sinks": [],
+			"transformations": [
+				{
+					"name": "SplitGenres"
+				},
+				{
+					"name": "FlattenGenres"
+				},
+				{
+					"name": "JoinDimMovie"
+				},
+				{
+					"name": "Select1"
+				},
+				{
+					"name": "Join1"
+				}
+			],
+			"script": "source(output(\n\t\tmovieId as integer,\n\t\ttitle as string,\n\t\tgenres as string,\n\t\tyear as integer,\n\t\trating as double\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tisolationLevel: 'READ_UNCOMMITTED',\n\tformat: 'table') ~> DMsource\nsource(output(\n\t\tgenreId as integer,\n\t\tgenre as string\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tisolationLevel: 'READ_UNCOMMITTED',\n\tformat: 'table') ~> GenreDimmension\nsource(output(\n\t\tdateId as integer,\n\t\tyear as integer,\n\t\tisLeapYear as integer,\n\t\tcentury as integer\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tisolationLevel: 'READ_UNCOMMITTED',\n\tformat: 'table') ~> DateDimmension\nDMsource derive(splittedGenres = split(toString(genres), '|')) ~> SplitGenres\nSplitGenres foldDown(unroll(splittedGenres, splittedGenres),\n\tmapColumn(\n\t\tmovieId,\n\t\ttitle,\n\t\tyear,\n\t\trating,\n\t\tgenre = splittedGenres\n\t),\n\tskipDuplicateMapInputs: false,\n\tskipDuplicateMapOutputs: false) ~> FlattenGenres\nFlattenGenres, GenreDimmension join(FlattenGenres@genre == GenreDimmension@genre,\n\tjoinType:'left',\n\tbroadcast: 'auto')~> JoinDimMovie\nJoin1 select(mapColumn(\n\t\tmovieId,\n\t\trating,\n\t\tgenreId,\n\t\tdateId\n\t),\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true) ~> Select1\nJoinDimMovie, DateDimmension join(FlattenGenres@year == DateDimmension@year,\n\tjoinType:'left',\n\tbroadcast: 'auto')~> Join1"
+		}
+	}
+}

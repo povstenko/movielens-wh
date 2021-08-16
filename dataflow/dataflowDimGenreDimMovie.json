@@ -1,5 +1,5 @@
 {
-	"name": "dataflowDM",
+	"name": "dataflowDimGenreDimMovie",
 	"properties": {
 		"type": "MappingDataFlow",
 		"typeProperties": {
