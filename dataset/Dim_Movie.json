@@ -1,0 +1,26 @@
+{
+	"name": "Dim_Movie",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "movies_db",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": [
+			{
+				"name": "movieId",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "title",
+				"type": "nvarchar"
+			}
+		],
+		"typeProperties": {
+			"schema": "warehouse",
+			"table": "Dim_Movie"
+		}
+	}
+}
