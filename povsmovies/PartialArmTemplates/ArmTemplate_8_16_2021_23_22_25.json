@@ -1,0 +1,163 @@
+{
+	"$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"factoryName": {
+			"type": "string",
+			"metadata": "Data Factory name",
+			"defaultValue": "povsmovies"
+		}
+	},
+	"variables": {
+		"factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
+	},
+	"resources": [
+		{
+			"name": "[concat(parameters('factoryName'), '/main')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Extract from CSV to DataLake",
+						"type": "ExecutePipeline",
+						"dependsOn": [],
+						"userProperties": [],
+						"typeProperties": {
+							"pipeline": {
+								"referenceName": "csv to datalake",
+								"type": "PipelineReference"
+							},
+							"waitOnCompletion": true
+						}
+					},
+					{
+						"name": "Transform to Stage",
+						"type": "ExecuteDataFlow",
+						"dependsOn": [
+							{
+								"activity": "Extract from CSV to DataLake",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "1.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"dataflow": {
+								"referenceName": "dataflowStg",
+								"type": "DataFlowReference"
+							},
+							"compute": {
+								"coreCount": 8,
+								"computeType": "General"
+							},
+							"traceLevel": "Fine"
+						}
+					},
+					{
+						"name": "ETL Warehouse",
+						"type": "ExecutePipeline",
+						"dependsOn": [
+							{
+								"activity": "Transform to Stage",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"pipeline": {
+								"referenceName": "warehouse",
+								"type": "PipelineReference"
+							},
+							"waitOnCompletion": true
+						}
+					}
+				],
+				"annotations": [],
+				"lastPublishTime": "2021-08-16T08:16:27Z"
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/dataflowBridgeAndFact')]",
+			"type": "Microsoft.DataFactory/factories/dataflows",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"type": "MappingDataFlow",
+				"typeProperties": {
+					"sources": [
+						{
+							"dataset": {
+								"referenceName": "moviesDataMart",
+								"type": "DatasetReference"
+							},
+							"name": "DMsource"
+						},
+						{
+							"dataset": {
+								"referenceName": "Dim_Genre",
+								"type": "DatasetReference"
+							},
+							"name": "GenreDimmension"
+						},
+						{
+							"dataset": {
+								"referenceName": "Dim_Date",
+								"type": "DatasetReference"
+							},
+							"name": "DateDimmension"
+						}
+					],
+					"sinks": [
+						{
+							"dataset": {
+								"referenceName": "Bridge_MovieGenre",
+								"type": "DatasetReference"
+							},
+							"name": "BridgeSink"
+						},
+						{
+							"dataset": {
+								"referenceName": "Fact_Rating",
+								"type": "DatasetReference"
+							},
+							"name": "FactSink"
+						}
+					],
+					"transformations": [
+						{
+							"name": "SplitGenres"
+						},
+						{
+							"name": "FlattenGenres"
+						},
+						{
+							"name": "JoinDimMovie"
+						},
+						{
+							"name": "SelectKeys"
+						},
+						{
+							"name": "JoinDimDate"
+						},
+						{
+							"name": "DistinctKeys"
+						}
+					],
+					"script": "source(output(\n\t\tmovieId as integer,\n\t\ttitle as string,\n\t\tgenres as string,\n\t\tyear as integer,\n\t\trating as double\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tisolationLevel: 'READ_UNCOMMITTED',\n\tformat: 'table') ~> DMsource\nsource(output(\n\t\tgenreId as integer,\n\t\tgenre as string\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tisolationLevel: 'READ_UNCOMMITTED',\n\tformat: 'table') ~> GenreDimmension\nsource(output(\n\t\tdateId as integer,\n\t\tyear as integer,\n\t\tisLeapYear as integer,\n\t\tcentury as integer\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tisolationLevel: 'READ_UNCOMMITTED',\n\tformat: 'table') ~> DateDimmension\nDMsource derive(splittedGenres = split(toString(genres), '|')) ~> SplitGenres\nSplitGenres foldDown(unroll(splittedGenres, splittedGenres),\n\tmapColumn(\n\t\tmovieId,\n\t\ttitle,\n\t\tyear,\n\t\trating,\n\t\tgenre = splittedGenres\n\t),\n\tskipDuplicateMapInputs: false,\n\tskipDuplicateMapOutputs: false) ~> FlattenGenres\nFlattenGenres, GenreDimmension join(FlattenGenres@genre == GenreDimmension@genre,\n\tjoinType:'left',\n\tbroadcast: 'auto')~> JoinDimMovie\nJoinDimDate select(mapColumn(\n\t\tmovieId,\n\t\trating,\n\t\tgenreId,\n\t\tdateId\n\t),\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true) ~> SelectKeys\nJoinDimMovie, DateDimmension join(FlattenGenres@year == DateDimmension@year,\n\tjoinType:'left',\n\tbroadcast: 'auto')~> JoinDimDate\nSelectKeys aggregate(groupBy(movieId,\n\t\trating,\n\t\tdateId),\n\tcnt = count()) ~> DistinctKeys\nSelectKeys sink(allowSchemaDrift: true,\n\tvalidateSchema: false,\n\tinput(\n\t\tmovieId as integer,\n\t\tgenreId as integer\n\t),\n\tdeletable:false,\n\tinsertable:true,\n\tupdateable:false,\n\tupsertable:false,\n\ttruncate:true,\n\tformat: 'table',\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true,\n\terrorHandlingOption: 'stopOnFirstError',\n\tmapColumn(\n\t\tmovieId,\n\t\tgenreId\n\t)) ~> BridgeSink\nDistinctKeys sink(allowSchemaDrift: true,\n\tvalidateSchema: false,\n\tinput(\n\t\tratingId as integer,\n\t\tmovieId as integer,\n\t\tdateId as integer,\n\t\trating as double\n\t),\n\tdeletable:false,\n\tinsertable:true,\n\tupdateable:false,\n\tupsertable:false,\n\ttruncate:true,\n\tformat: 'table',\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true,\n\terrorHandlingOption: 'stopOnFirstError',\n\tmapColumn(\n\t\tmovieId,\n\t\tdateId,\n\t\trating\n\t)) ~> FactSink"
+				}
+			},
+			"dependsOn": []
+		}
+	]
+}
