@@ -1,5 +1,8 @@
 # MovieLens Microsoft Azure Data Warehouse
 
+## Architecture Diagram
+![](img/architecture.png)
+
 ## Azure Data Factory
 ### Main Pipeline
 ![](img/adf_pipeline_main.png)
